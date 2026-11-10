@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Potency Ranker · 效力排序器</title>
+    <meta
+      name="description"
+      content="在浏览器内用 R（webR）对每个化合物单独拟合 4PL 剂量–反应曲线，给出 IC50、95% 置信区间、Hill 斜率，并按效力排序。"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Cpath d='M12 47 C27 47 21 17 35 17 C45 17 48 29 39 33' fill='none' stroke='%236366f1' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='48' cy='47' r='5' fill='%232dd4bf'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="wrap hero-inner">
+        <div class="brand">
+          <div class="brand-badge" aria-hidden="true">4PL</div>
+          <div class="brand-text">
+            <h1>Potency Ranker <span class="brand-cn">效力排序器</span></h1>
+            <p class="subtitle">
+              上传一份剂量–反应 CSV，在浏览器里用真正的 R（webR）逐个化合物拟合四参数逻辑斯蒂曲线，
+              按效力从强到弱排序。
+            </p>
+          </div>
+        </div>
+        <div class="hero-badges">
+          <span class="badge" id="engine-badge"><span class="badge-dot"></span><span id="engine-text">R 引擎：待启动</span></span>
+          <span class="badge badge-ghost">本地计算 · 数据不上传</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="card" id="data-card" aria-labelledby="data-title">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step">01</span>
+            <div>
+              <h2 id="data-title">Data <span class="cn">数据</span></h2>
+              <p class="card-desc">
+                UTF-8、逗号分隔的 CSV，列名必须为
+                <code>compound, conc_nM, response_pct, replicate</code>。
+                每个化合物单独拟合，绝不合并成一条曲线。
+              </p>
+            </div>
+          </div>
+          <div class="card-tools">
+            <button class="btn btn-ghost" id="sample-btn" type="button">载入示例数据</button>
+          </div>
+        </div>
+
+        <div class="data-grid">
+          <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="选择或拖入 CSV 文件">
+            <input type="file" id="file-input" accept=".csv,text/csv,text/plain" hidden />
+            <div class="dropzone-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 16V4" />
+                <path d="m7 9 5-5 5 5" />
+                <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+              </svg>
+            </div>
+            <p class="dropzone-title">拖入 CSV，或 <span class="link">选择文件</span></p>
+            <p class="dropzone-hint">
+              首行为列名 · 每行一个实测点 · 同一浓度可有多行重复
+            </p>
+            <p class="dropzone-meta" id="file-meta" hidden></p>
+          </div>
+
+          <div class="panel" id="selfcheck-panel">
+            <div class="panel-head">
+              <h3>数据自检</h3>
+              <span class="panel-tag" id="selfcheck-tag">等待数据</span>
+            </div>
+            <div class="panel-body" id="selfcheck-body">
+              <p class="muted">
+                读入文件后，这里会列出：总行数、化合物个数、每个化合物的浓度点位数与重复数、
+                实测浓度范围（最小–最大 nM），以及因缺失值被跳过的行数。
+              </p>
+              <ul class="checklist">
+                <li>总行数 / 化合物个数</li>
+                <li>每化合物：浓度点位数 × 重复数</li>
+                <li>实测浓度范围（nM）</li>
+                <li>缺失值跳过行数（列出具体行号）</li>
+              </ul>
+              <p class="muted small">不会静默丢弃任何数据行。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="run-row">
+          <button class="btn btn-primary" id="run-btn" type="button" disabled>
+            <span class="btn-spinner" aria-hidden="true"></span>
+            <span id="run-btn-label">Run fit</span>
+          </button>
+          <span class="run-hint" id="run-hint">先上传 CSV（或载入示例数据）；拟合在本地浏览器内完成。</span>
+          <span class="run-status" id="run-status" role="status" aria-live="polite"></span>
+        </div>
+      </section>
+
+      <section class="card" id="results-card" aria-labelledby="results-title">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step">02</span>
+            <div>
+              <h2 id="results-title">Results <span class="cn">结果</span></h2>
+              <p class="card-desc">
+                按效力从强到弱（IC50 升序）排序；拟合失败或残差偏大的化合物会明确标出，不会被藏起来。
+              </p>
+            </div>
+          </div>
+          <div class="card-tools">
+            <button class="btn btn-ghost" id="export-btn" type="button" disabled>导出结果 CSV</button>
+          </div>
+        </div>
+
+        <div id="results-body">
+          <div class="empty-state">
+            <div class="empty-grid">
+              <article class="empty-card">
+                <span class="empty-index">①</span>
+                <h3>参数表</h3>
+                <p>IC50、95% 置信区间上下限、Hill 斜率、top / bottom、数据点数、残差标准误与状态。</p>
+              </article>
+              <article class="empty-card">
+                <span class="empty-index">②</span>
+                <h3>剂量–反应图</h3>
+                <p>每个化合物单独一张图：log10 浓度轴、全部原始重复散点、4PL 拟合曲线、IC50 竖虚线。</p>
+              </article>
+              <article class="empty-card">
+                <span class="empty-index">③</span>
+                <h3>R code</h3>
+                <p>原样展示本次实际在 webR 中执行的 R 代码，只用 base R 与 stats。</p>
+              </article>
+            </div>
+            <p class="empty-note">上传数据并点击 <strong>Run fit</strong> 后，结果会出现在这里。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer wrap">
+      <span id="r-version">R 引擎未启动</span>
+      <span class="sep">·</span>
+      <span>本地 base R + stats</span>
+      <span class="sep">·</span>
+      <span>纯前端，所有计算在浏览器内完成</span>
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

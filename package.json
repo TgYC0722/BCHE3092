@@ -1,0 +1,19 @@
+{
+  "name": "potency-ranker",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Potency Ranker - browser-side 4PL dose-response fitting with webR",
+  "scripts": {
+    "setup:webr": "node scripts/setup-webr.mjs",
+    "dev": "node --require ./scripts/windows-exec-guard.cjs ./node_modules/vite/bin/vite.js --port 5173 --strictPort --configLoader native",
+    "build": "node --require ./scripts/windows-exec-guard.cjs ./node_modules/vite/bin/vite.js build --configLoader native",
+    "preview": "node --require ./scripts/windows-exec-guard.cjs ./node_modules/vite/bin/vite.js preview --port 5173 --strictPort"
+  },
+  "dependencies": {
+    "webr": "^0.6.1"
+  },
+  "devDependencies": {
+    "vite": "^7.1.0"
+  }
+}
